@@ -30,14 +30,17 @@ def sample_trajectory(
             )
 
         # TODO use the most recent ob and the policy to decide what to do
-        ac: np.ndarray = None
+        if type(ob) is tuple:
+            ob = ob[0]
+        ac: np.ndarray = policy.get_action(ob)
 
         # TODO: use that action to take a step in the environment
-        next_ob, rew, done, _ = None, None, None, None
+        env_resp = env.step(ac)
+        next_ob, rew, done = env_resp[:3]
 
         # TODO rollout can end due to done, or due to max_length
         steps += 1
-        rollout_done: bool = None
+        rollout_done: bool = done or steps >= max_length
 
         # record result of taking that action
         obs.append(ob)
