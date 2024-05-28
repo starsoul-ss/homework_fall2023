@@ -15,8 +15,9 @@ from cs285.infrastructure import utils
 from cs285.infrastructure.logger import Logger
 from cs285.infrastructure.action_noise_wrapper import ActionNoiseWrapper
 
-MAX_NVIDEO = 2
+import matplotlib.pyplot as plt
 
+MAX_NVIDEO = 2
 
 def run_training_loop(args):
     logger = Logger(args.logdir)
@@ -66,12 +67,17 @@ def run_training_loop(args):
     total_envsteps = 0
     start_time = time.time()
 
+    # Initialize lists to store data for learning curves
+    envsteps_list = []
+    average_return_list = []
+    loss_list = []
+
     for itr in range(args.n_iter):
         print(f"\n********** Iteration {itr} ************")
         # TODO: sample `args.batch_size` transitions using utils.sample_trajectories
         # make sure to use `max_ep_len`
         trajs, envsteps_this_batch = utils.sample_trajectories(
-            env, agent.actor, args.batch_size, max_ep_len,render=False
+            env, agent.actor, args.batch_size, max_ep_len, render=False
         )
         total_envsteps += envsteps_this_batch
 
@@ -81,7 +87,7 @@ def run_training_loop(args):
 
         # TODO: train the agent using the sampled trajectories and the agent's update function
         train_info: dict = {}
-        train_info = agent.update(  
+        train_info = agent.update(
             trajs_dict["observation"],
             trajs_dict["action"],
             trajs_dict["reward"],
@@ -113,6 +119,11 @@ def run_training_loop(args):
 
             logger.flush()
 
+            # Append data for learning curves
+            envsteps_list.append(total_envsteps)
+            average_return_list.append(logs["Train_AverageReturn"])
+            loss_list.append(logs["Actor Loss"])
+
         if args.video_log_freq != -1 and itr % args.video_log_freq == 0:
             print("\nCollecting video rollouts...")
             eval_video_trajs = utils.sample_n_trajectories(
@@ -126,6 +137,17 @@ def run_training_loop(args):
                 max_videos_to_save=MAX_NVIDEO,
                 video_title="eval_rollouts",
             )
+
+    # Plot learning curves
+    plt.figure()
+    plt.plot(envsteps_list, average_return_list, label="Average Return")
+    plt.plot(envsteps_list, loss_list, label="Loss")
+    plt.xlabel("Environment Steps")
+    plt.ylabel("Value")
+    plt.title("Learning Curves")
+    plt.legend()
+    plt.show()
+
 
 
 def main():
@@ -189,6 +211,8 @@ def main():
         os.makedirs(logdir)
 
     run_training_loop(args)
+
+
 
 
 if __name__ == "__main__":
